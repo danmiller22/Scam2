@@ -4,9 +4,9 @@
 const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN");
 const TELEGRAM_CHAT_ID = Deno.env.get("TELEGRAM_CHAT_ID");
 
-// ПОДСТАВЬ СЮДА СВОЮ API-ССЫЛКУ LALAFO ПОД НУЖНЫЙ ФИЛЬТР
-// Получить можно, посмотрев network-запросы к https://lalafo.kg/.../owner?price[to]=60000
-// Пример (НЕ факт, что это ровно твой фильтр — поменяй сам):
+// ПОДСТАВЬ СЮДА СВОЙ API-URL Lalafo
+// ВАЖНО: не HTML-страницу, а именно URL запроса к /api/search/v3/feed/search?...,
+// который ты увидишь в DevTools → Network → Copy as fetch.
 const LALAFO_API_URL =
   "https://lalafo.kg/api/search/v3/feed/search?expand=url&per-page=40&category_id=1357";
 
@@ -17,20 +17,28 @@ if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
 // забираем список объявлений из Lalafo API
 async function fetchLalafoItems(): Promise<any[]> {
   const res = await fetch(LALAFO_API_URL, {
+    method: "GET",
     headers: {
-      "User-Agent":
-        "Mozilla/5.0 (compatible; LalafoTelegramBot/1.0; +https://lalafo.kg)",
-      "Accept": "application/json, text/plain, */*",
+      "accept": "application/json, text/plain, */*",
+      "accept-language": "ru-RU,ru;q=0.9,en;q=0.8",
+      "user-agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
       "device": "pc",
+      "referer":
+        "https://lalafo.kg/kyrgyzstan/kvartiry/arenda-kvartir/dolgosrochnaya-arenda-kvartir/1-bedroom/2-bedrooms/owner?price[to]=60000",
+      "cache-control": "no-cache",
     },
   });
 
   if (!res.ok) {
+    const body = await res.text();
+    console.error("Lalafo API raw body snippet:", body.slice(0, 500));
     throw new Error(`Lalafo API error: ${res.status} ${res.statusText}`);
   }
 
   const data = await res.json();
-  return Array.isArray(data.items) ? data.items : [];
+  const items = (data as any)?.items;
+  return Array.isArray(items) ? items : [];
 }
 
 // формируем текст для телеги по одному объявлению
